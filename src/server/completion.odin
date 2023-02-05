@@ -523,14 +523,14 @@ get_selector_completion :: proc(
 					continue
 				}
 
+				build_symbol_signature(&symbol)
 				item := CompletionItem {
 					label         = name,
 					kind          = .Field,
-					detail        = fmt.tprintf(
-						"%v.%v: %v",
-						selector.name,
-						name,
-						type_to_string(ast_context, v.types[i]),
+					detail        = concatenate_symbol_information(
+						ast_context,
+						symbol,
+						true,
 					),
 					documentation = symbol.doc,
 				}
@@ -563,7 +563,7 @@ get_selector_completion :: proc(
 				symbol := search.symbol
 
 				resolve_unresolved_symbol(ast_context, &symbol)
-				build_procedure_symbol_signature(&symbol)
+				build_symbol_signature(&symbol)
 
 				item := CompletionItem {
 					label         = symbol.name,
@@ -1061,7 +1061,7 @@ get_identifier_completion :: proc(
 		for r in results {
 			r := r
 			resolve_unresolved_symbol(ast_context, &r.symbol)
-			build_procedure_symbol_signature(&r.symbol)
+			build_symbol_signature(&r.symbol)
 
 			uri, _ := common.parse_uri(r.symbol.uri, context.temp_allocator)
 			if uri.path != ast_context.fullpath {
@@ -1109,7 +1109,7 @@ get_identifier_completion :: proc(
 		if symbol, ok := resolve_type_identifier(ast_context, ident^); ok {
 			symbol.signature = get_signature(ast_context, ident^, symbol)
 
-			build_procedure_symbol_signature(&symbol)
+			build_symbol_signature(&symbol)
 
 			if score, ok := common.fuzzy_match(matcher, ident.name); ok == 1 {
 				append(
@@ -1155,7 +1155,7 @@ get_identifier_completion :: proc(
 			if symbol, ok := resolve_type_identifier(ast_context, ident^); ok {
 				symbol.signature = get_signature(ast_context, ident^, symbol)
 
-				build_procedure_symbol_signature(&symbol)
+				build_symbol_signature(&symbol)
 
 				if score, ok := common.fuzzy_match(matcher, ident.name);
 				   ok == 1 {

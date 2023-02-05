@@ -36,7 +36,7 @@ write_hover_content :: proc(
 		}
 	}
 
-	build_procedure_symbol_signature(&symbol)
+	build_symbol_signature(&symbol)
 
 	cat := concatenate_symbol_information(ast_context, symbol, false)
 

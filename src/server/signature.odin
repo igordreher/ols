@@ -49,10 +49,12 @@ ParameterInformation :: struct {
 /*
 	Lazily build the signature and returns from ast.Nodes
 */
-build_procedure_symbol_signature :: proc(symbol: ^Symbol) {
-	if value, ok := symbol.value.(SymbolProcedureValue); ok {
-		builder := strings.builder_make(context.temp_allocator)
+build_symbol_signature :: proc(symbol: ^Symbol) {
+	builder := strings.builder_make(context.temp_allocator)
+	strings.write_string(&builder, symbol.signature)
+	defer symbol.signature = strings.to_string(builder)
 
+	if value, ok := symbol.value.(SymbolProcedureValue); ok {
 		strings.write_string(&builder, "proc")
 		strings.write_string(&builder, "(")
 		for arg, i in value.arg_types {
@@ -81,9 +83,36 @@ build_procedure_symbol_signature :: proc(symbol: ^Symbol) {
 				strings.write_string(&builder, ")")
 			}
 		}
-		symbol.signature = strings.to_string(builder)
 	} else if value, ok := symbol.value.(SymbolAggregateValue); ok {
-		symbol.signature = "proc"
+		strings.write_string(&builder, "proc")
+	} else if value, ok := symbol.value.(SymbolStructValue); ok {
+		if symbol.signature != "struct" {
+			strings.write_string(&builder, " :: struct")
+		}
+		strings.write_string(&builder, " {")
+		for name, i in value.names {
+			type := common.node_to_string(value.types[i])
+			strings.write_string(&builder, fmt.tprintf("\n\t%s: %s,", name, type))
+		}
+		strings.write_string(&builder, "\n}")
+	} else if value, ok := symbol.value.(SymbolUnionValue); ok {
+		if symbol.signature != "union" {
+			strings.write_string(&builder, " :: union")
+		}
+		strings.write_string(&builder, " {")
+		for type, i in value.types {
+			strings.write_string(&builder, fmt.tprintf("\n\t%s,", common.node_to_string(type)))
+		}
+		strings.write_string(&builder, "\n}")
+	} else if value, ok := symbol.value.(SymbolEnumValue); ok {
+		if symbol.signature != "enum" {
+			strings.write_string(&builder, " :: enum")
+		}
+		strings.write_string(&builder, " {")
+		for name, i in value.names {
+			strings.write_string(&builder, fmt.tprintf("\n\t%s,", name))
+		}
+		strings.write_string(&builder, "\n}")
 	}
 }
 
@@ -205,7 +234,7 @@ get_signature_information :: proc(
 			parameters[i].label = common.node_to_string(arg)
 		}
 
-		build_procedure_symbol_signature(&call)
+		build_symbol_signature(&call)
 
 		info := SignatureInformation {
 			label         = concatenate_symbol_information(
@@ -243,7 +272,7 @@ get_signature_information :: proc(
 					parameters[i].label = common.node_to_string(arg)
 				}
 
-				build_procedure_symbol_signature(&symbol)
+				build_symbol_signature(&symbol)
 
 				info := SignatureInformation {
 					label         = concatenate_symbol_information(
